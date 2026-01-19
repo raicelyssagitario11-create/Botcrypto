@@ -1,0 +1,70 @@
+{
+  "bot_state": {
+    "capital_initial": 100.0,
+    "capital_actual": 102.4,
+    "profit_loss_total": 2.4,
+    "buy_count": 3,
+    "sell_count": 2,
+    "win_count": 3,
+    "loss_count": 2,
+    "last_signal": "BUY BTCUSDT",
+    "last_updated": "2026-01-18T13:37:00.000000"
+  },
+  "trading_history": [
+    {
+      "timestamp": "2026-01-18 10:15:00",
+      "signal_type": "BUY",
+      "pair": "BTCUSDT",
+      "price": 95000.00,
+      "stop_loss": 93100.00,
+      "take_profit": 100700.00,
+      "capital_after": 100.30,
+      "pnl": 0.30,
+      "status": "completed"
+    },
+    {
+      "timestamp": "2026-01-18 10:45:00",
+      "signal_type": "SELL",
+      "pair": "ETHUSDT",
+      "price": 3200.00,
+      "stop_loss": 3264.00,
+      "take_profit": 3008.00,
+      "capital_after": 100.20,
+      "pnl": -0.10,
+      "status": "completed"
+    },
+    {
+      "timestamp": "2026-01-18 11:20:00",
+      "signal_type": "BUY",
+      "pair": "BNBUSDT",
+      "price": 580.00,
+      "stop_loss": 568.40,
+      "take_profit": 614.80,
+      "capital_after": 100.50,
+      "pnl": 0.30,
+      "status": "completed"
+    },
+    {
+      "timestamp": "2026-01-18 12:05:00",
+      "signal_type": "BUY",
+      "pair": "BTCUSDT",
+      "price": 96500.00,
+      "stop_loss": 94570.00,
+      "take_profit": 102290.00,
+      "capital_after": 101.80,
+      "pnl": 1.30,
+      "status": "completed"
+    },
+    {
+      "timestamp": "2026-01-18 13:10:00",
+      "signal_type": "SELL",
+      "pair": "ETHUSDT",
+      "price": 3180.00,
+      "stop_loss": 3243.60,
+      "take_profit": 2989.20,
+      "capital_after": 102.40,
+      "pnl": 0.60,
+      "status": "completed"
+    }
+  ]
+}

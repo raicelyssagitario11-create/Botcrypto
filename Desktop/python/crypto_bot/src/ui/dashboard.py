@@ -1,0 +1,325 @@
+import customtkinter as ctk
+from .styles import *
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.ticker as mticker
+import mplfinance as mpf
+import pandas as pd
+
+class DashboardView(ctk.CTkFrame):
+    def __init__(self, master, bot):
+        super().__init__(master, fg_color=COLOR_BG_PRIMARY)
+        self.bot = bot
+        self.current_pair = "BTCUSDT"  # Track current pair being displayed
+        
+        # === Grid ===
+        self.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        self.grid_rowconfigure(1, weight=1)  # Market overview
+        self.grid_rowconfigure(2, weight=2)  # Chart
+        self.grid_rowconfigure(3, weight=1)  # Log
+        
+        # === Stats Cards ===
+        stats_container = ctk.CTkFrame(self, fg_color="transparent")
+        stats_container.grid(row=0, column=0, columnspan=4, sticky="ew", padx=20, pady=(20, 10))
+        stats_container.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        
+        # Capital card
+        self.card_capital = self._create_card(stats_container, 0, "TOTAL CAPITAL", "25.00 USDT", "💰", self.edit_capital)
+        
+        # PNL card
+        self.card_pnl = self._create_card(stats_container, 1, "TOTAL PNL", "+0.00 USDT", "📈")
+        
+        # Win rate card
+        self.card_winrate = self._create_card(stats_container, 2, "WIN RATE", "0% (0/0)", "🎯", self.reset_stats)
+
+        # Price ticker card
+        self.card_price = self._create_card(stats_container, 3, "LIVE PRICE", "--.-- USDT", "⚡", None, COLOR_ACCENT_BUY)
+
+        # === Market Overview Panel ===
+        from .market_overview import MarketOverview
+        self.market_overview = MarketOverview(self, self.bot, self.switch_pair)
+        self.market_overview.grid(row=1, column=0, columnspan=4, padx=20, pady=10, sticky="nsew")
+
+        # === Chart Section ===
+        self.chart_frame = ctk.CTkFrame(self, fg_color=COLOR_BG_SECONDARY, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
+        self.chart_frame.grid(row=2, column=0, columnspan=4, padx=20, pady=10, sticky="nsew")
+        
+        header_frame = ctk.CTkFrame(self.chart_frame, fg_color="transparent")
+        header_frame.pack(fill="x", padx=15, pady=10)
+        
+        self.chart_label = ctk.CTkLabel(header_frame, text=f"MARKET OVERVIEW ({self.current_pair})", font=(FONT_FAMILY, 14, "bold"), text_color=COLOR_TEXT_SECONDARY)
+        self.chart_label.pack(side="left")
+        
+        # Placeholder for Chart
+        self.canvas = None
+        
+        # === Log Section ===
+        self.log_frame = ctk.CTkFrame(self, fg_color=COLOR_BG_SECONDARY, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
+        self.log_frame.grid(row=3, column=0, columnspan=4, padx=20, pady=(0, 20), sticky="nsew")
+        
+        log_header = ctk.CTkFrame(self.log_frame, fg_color="transparent")
+        log_header.pack(fill="x", padx=15, pady=(10, 5))
+        
+        ctk.CTkLabel(log_header, text="ACTIVITY LOG", font=(FONT_FAMILY, 12, "bold"), text_color=COLOR_TEXT_MUTED).pack(side="left")
+        
+        self.log_box = ctk.CTkTextbox(
+            self.log_frame, 
+            font=("Consolas", 12), 
+            text_color=COLOR_TEXT_PRIMARY, 
+            fg_color=COLOR_BG_PRIMARY,
+            border_width=0,
+            corner_radius=6
+        )
+        self.log_box.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+
+        # === Hooks ===
+        self.bot.log_callback = self.update_log_safe
+        self.bot.stats_callback = self.update_stats_safe
+        self.bot.notification_callback = self.show_notification_safe
+        
+        # Initial chart load after 1s
+        self.after(1000, self.update_chart)
+        # Start Price Ticker
+        self.after(2000, self.update_ticker)
+
+
+    def _create_card(self, parent, col, title, value, icon, command=None, value_color=COLOR_TEXT_PRIMARY):
+        frame = ctk.CTkFrame(parent, fg_color=COLOR_BG_CARD, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
+        frame.grid(row=0, column=col, padx=10, pady=10, sticky="ew")
+        
+        # Header with Icon and Title
+        header = ctk.CTkFrame(frame, fg_color="transparent")
+        header.pack(fill="x", padx=15, pady=(15, 0))
+        
+        icon_lbl = ctk.CTkLabel(header, text=icon, font=(FONT_FAMILY, 16))
+        icon_lbl.pack(side="left", padx=(0, 5))
+        
+        title_lbl = ctk.CTkLabel(header, text=title, font=(FONT_FAMILY, 11, "bold"), text_color=COLOR_TEXT_SECONDARY)
+        title_lbl.pack(side="left")
+        
+        if command:
+            btn = ctk.CTkButton(
+                header, 
+                text="⚙️" if "CAPITAL" in title else "🔄", 
+                command=command,
+                width=24, height=24,
+                fg_color="transparent",
+                hover_color=COLOR_BG_SECONDARY,
+                text_color=COLOR_TEXT_MUTED,
+                font=(FONT_FAMILY, 12)
+            )
+            btn.pack(side="right")
+        
+        # Value
+        val_lbl = ctk.CTkLabel(frame, text=value, font=(FONT_FAMILY, 24, "bold"), text_color=value_color)
+        val_lbl.pack(padx=15, pady=(5, 15), anchor="w")
+        
+        return val_lbl
+
+    def log(self, message):
+        self.update_log_safe(message)
+
+    def update_log_safe(self, message):
+        # Calls need to be thread safe for Tkinter
+        self.after(0, lambda: self._log_impl(message))
+
+    def _log_impl(self, message):
+        self.log_box.insert("end", message + "\n")
+        self.log_box.see("end")
+
+    def update_stats_safe(self, stats):
+        self.after(0, lambda: self._stats_impl(stats))
+
+    def _stats_impl(self, stats):
+        self.card_capital.configure(text=f"{stats['capital_actual']:.2f} USDT")
+        
+        pnl = stats['pnl']
+        sign = "+" if pnl >= 0 else ""
+        color = COLOR_ACCENT_BUY if pnl >= 0 else COLOR_ACCENT_SELL
+        self.card_pnl.configure(text=f"{sign}{pnl:.2f} USDT", text_color=color)
+        
+        wins = stats['win_count']
+        losses = stats['loss_count']
+        total = wins + losses
+        rate = (wins / total * 100) if total > 0 else 0
+        self.card_winrate.configure(text=f"{rate:.1f}% ({wins}/{total})")
+
+    def switch_pair(self, pair):
+        """Switch the main chart to a different pair"""
+        self.current_pair = pair
+        self.chart_label.configure(text=f"MARKET OVERVIEW ({pair})")
+        self.update_chart()
+        self.log(f"📊 Switched to {pair}")
+
+    def show_notification_safe(self, signal_data):
+        """Thread-safe notification trigger"""
+        self.after(0, lambda: self._show_notification(signal_data))
+
+    def _show_notification(self, signal_data):
+        """Display signal notification popup"""
+        from .notification import SignalNotification
+        SignalNotification(
+            self.winfo_toplevel(),
+            signal_data['type'],
+            signal_data['pair'],
+            signal_data['price'],
+            signal_data['sl'],
+            signal_data['tp']
+        )
+
+        # Optionally update chart here if needed
+        # We can update chart every time stats update or separate timer. 
+        # For now, let's just trigger it once or on demand.
+        pass
+
+    def update_chart(self):
+        # Schedule next update in 60 seconds
+        if not self.winfo_exists():
+            return
+            
+        self.after(60000, self.update_chart)
+
+        try:
+            df = self.bot.get_chart_data(self.current_pair)
+            
+            # Clear frame
+            for widget in self.chart_frame.winfo_children():
+                if widget != self.chart_label:
+                    widget.destroy()
+
+            if df is None or df.empty: 
+                error_label = ctk.CTkLabel(self.chart_frame, text="⚠️ No Data Available (Check Internet/API)", text_color=COLOR_ACCENT_SELL)
+                error_label.pack(expand=True)
+                return
+
+            # === Premium Chart Style ===
+            # We use a custom style for better readability
+            mc = mpf.make_marketcolors(
+                up=COLOR_ACCENT_BUY, 
+                down=COLOR_ACCENT_SELL,
+                edge='inherit',
+                wick='inherit',
+                volume={'up': COLOR_ACCENT_BUY, 'down': COLOR_ACCENT_SELL},
+                alpha=0.8
+            )
+            
+            s = mpf.make_mpf_style(
+                base_mpf_style='nightclouds', 
+                marketcolors=mc,
+                facecolor=COLOR_BG_SECONDARY,
+                gridcolor='#2B3139',
+                gridstyle='dotted',
+                edgecolor=COLOR_BG_SECONDARY,
+                figcolor=COLOR_BG_SECONDARY,
+                rc={
+                    'font.size': 8,
+                    'axes.titlesize': 10,
+                    'axes.labelsize': 8,
+                    'xtick.labelsize': 8,
+                    'ytick.labelsize': 8,
+                    'lines.linewidth': 1,
+                }
+            )
+
+            # Create the figure
+            fig, ax = mpf.plot(
+                df,
+                type="candle",
+                style=s,
+                volume=True,
+                title="",
+                returnfig=True,
+                figsize=(10, 5),
+                tight_layout=True,
+                datetime_format='%H:%M',
+                xrotation=0,
+                show_nontrading=False
+            )
+            
+            # Fine-tune the price and volume axes
+            # ax[0] is price, ax[2] is volume
+            ax[0].set_ylabel("Price (USDT)", color=COLOR_TEXT_MUTED, labelpad=12, fontsize=9)
+            ax[0].yaxis.set_label_position("right")
+            ax[0].yaxis.tick_right()
+            
+            # Fix Y-axis to show full numbers (no scientific notation, no offset)
+            ax[0].yaxis.set_major_formatter(mticker.StrMethodFormatter('{x:,.0f}'))
+            
+            # Volume axis
+            if len(ax) > 2:
+                ax[2].set_ylabel("Vol", color=COLOR_TEXT_MUTED, fontsize=8)
+                ax[2].yaxis.set_major_formatter(mticker.FormatStrFormatter('%d'))
+            
+            # Customize all axes
+            for a in ax:
+                a.tick_params(axis='x', colors=COLOR_TEXT_MUTED, labelsize=8, pad=5)
+                a.tick_params(axis='y', colors=COLOR_TEXT_MUTED, labelsize=8, pad=5)
+                a.spines['top'].set_visible(False)
+                a.spines['right'].set_visible(False)
+                a.spines['left'].set_visible(False)
+                a.spines['bottom'].set_color(COLOR_BORDER)
+                a.grid(alpha=0.15, linestyle=':')
+
+            # Embed in Tkinter
+            self.canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
+            self.canvas.draw()
+            canvas_widget = self.canvas.get_tk_widget()
+            canvas_widget.configure(bg=COLOR_BG_SECONDARY)
+            canvas_widget.pack(fill="both", expand=True, padx=10, pady=10)
+            
+        except Exception as e:
+            self.log(f"❌ Chart Error: {e}")
+            # Show error in chart area
+            err = ctk.CTkLabel(self.chart_frame, text=f"Chart Error: {str(e)}", text_color=COLOR_ACCENT_SELL)
+            err.pack(expand=True)
+    
+    def edit_capital(self):
+        """Show dialog to edit initial capital"""
+        dialog = ctk.CTkInputDialog(
+            text="Enter new initial capital (USDT):",
+            title="Edit Capital"
+        )
+        new_value = dialog.get_input()
+        
+        if new_value is not None and str(new_value).strip():
+            try:
+                # Clean the input - remove spaces and handle comma as decimal separator
+                cleaned_value = str(new_value).strip().replace(',', '.')
+                new_capital = float(cleaned_value)
+                
+                if new_capital > 0:
+                    self.bot.update_initial_capital(new_capital)
+                else:
+                    self.log("❌ Capital must be positive")
+            except (ValueError, AttributeError, TypeError) as e:
+                self.log(f"❌ Invalid capital value. Please enter a valid number.")
+    
+    def reset_stats(self):
+        """Reset statistics with confirmation"""
+        # Simple confirmation via dialog
+        dialog = ctk.CTkInputDialog(
+            text="Type 'RESET' to confirm resetting statistics:",
+            title="Reset Statistics"
+        )
+        confirmation = dialog.get_input()
+        
+        if confirmation and confirmation.upper() == "RESET":
+            self.bot.reset_statistics()
+        else:
+            self.log("❌ Reset cancelled")
+
+    def update_ticker(self):
+        """Update the live price ticker every 15 seconds"""
+        if not self.winfo_exists():
+            return
+        try:
+            price = self.bot.get_current_price(self.current_pair)
+            if price:
+                self.card_price.configure(text=f"{price:,.2f} USDT")
+        except Exception as e:
+            pass
+            
+        # Schedule next update (faster: 2 seconds)
+        self.after(2000, self.update_ticker)
+
+
+
