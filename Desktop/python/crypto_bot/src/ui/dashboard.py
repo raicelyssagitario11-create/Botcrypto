@@ -11,12 +11,12 @@ class DashboardView(ctk.CTkFrame):
     def __init__(self, master, bot):
         super().__init__(master, fg_color=COLOR_BG_PRIMARY)
         self.bot = bot
-        self.current_pair = "BTCUSDT"  # Track current pair being displayed
+        self.current_pair = "BTCUSDT"  # Par actual mostrado en la gráfica
         
         # === Grid ===
         self.grid_columnconfigure((0, 1, 2, 3), weight=1)
-        self.grid_rowconfigure(1, weight=1)  # Market overview + log row
-        self.grid_rowconfigure(2, weight=2)  # Chart
+        self.grid_rowconfigure(1, weight=1)  # Fila: overview + log
+        self.grid_rowconfigure(2, weight=2)  # Fila: gráfica
         
         # === Stats Cards ===
         # Tarjetas superiores: capital, PNL total, win rate y ticker.
@@ -68,13 +68,13 @@ class DashboardView(ctk.CTkFrame):
         
         header_frame = ctk.CTkFrame(self.chart_frame, fg_color="transparent")
         header_frame.pack(fill="x", padx=15, pady=10)
-        # Keep a reference so we don't destroy this frame during chart refresh
+        # Referencia para no destruir este encabezado al refrescar la gráfica
         self.header_frame = header_frame
         
         self.chart_label = ctk.CTkLabel(header_frame, text=f"MARKET OVERVIEW ({self.current_pair})", font=(FONT_FAMILY, 14, "bold"), text_color=COLOR_TEXT_SECONDARY)
         self.chart_label.pack(side="left")
 
-        # Pair selector dropdown
+        # Selector de par (dropdown)
         self.pair_var = ctk.StringVar(value=self.current_pair)
         self.pair_selector = ctk.CTkOptionMenu(
             header_frame,
@@ -89,7 +89,7 @@ class DashboardView(ctk.CTkFrame):
         )
         self.pair_selector.pack(side="right")
         
-        # Placeholder for Chart
+        # Placeholder para la gráfica
         self.canvas = None
         
         # === Hooks ===
@@ -98,9 +98,9 @@ class DashboardView(ctk.CTkFrame):
         self.bot.stats_callback = self.update_stats_safe
         self.bot.notification_callback = self.show_notification_safe
         
-        # Initial chart load after 1s
+        # Carga inicial de gráfica después de 1s
         self.after(1000, self.update_chart)
-        # Start Price Ticker
+        # Inicia ticker de precio
         self.after(2000, self.update_ticker)
 
 
@@ -108,7 +108,7 @@ class DashboardView(ctk.CTkFrame):
         frame = ctk.CTkFrame(parent, fg_color=COLOR_BG_CARD, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
         frame.grid(row=0, column=col, padx=10, pady=10, sticky="ew")
         
-        # Header with Icon and Title
+        # Encabezado con icono y título
         header = ctk.CTkFrame(frame, fg_color="transparent")
         header.pack(fill="x", padx=12, pady=(10, 0))
         
@@ -131,7 +131,7 @@ class DashboardView(ctk.CTkFrame):
             )
             btn.pack(side="right")
         
-        # Value
+        # Valor principal de la tarjeta
         val_lbl = ctk.CTkLabel(frame, text=value, font=(FONT_FAMILY, 22, "bold"), text_color=value_color)
         val_lbl.pack(padx=12, pady=(4, 12), anchor="w")
         
@@ -142,7 +142,7 @@ class DashboardView(ctk.CTkFrame):
 
     def update_log_safe(self, message):
         # Asegura actualización en hilo principal de Tk.
-        # Calls need to be thread safe for Tkinter
+        # Las llamadas deben ser seguras de hilo para Tkinter
         self.after(0, lambda: self._log_impl(message))
 
     def _log_impl(self, message):
@@ -196,13 +196,13 @@ class DashboardView(ctk.CTkFrame):
             signal_data['tp']
         )
 
-        # Optionally update chart here if needed
-        # We can update chart every time stats update or separate timer. 
-        # For now, let's just trigger it once or on demand.
+        # Opción de refrescar gráfica aquí si es necesario.
+        # Se puede actualizar con cada cambio de stats o con temporizador.
+        # Por ahora solo se dispara una vez o bajo demanda.
         pass
 
     def update_chart(self):
-        # Schedule next update in 60 seconds
+        # Programar próximo refresco en 60 segundos
         if not self.winfo_exists():
             return
             
@@ -211,7 +211,7 @@ class DashboardView(ctk.CTkFrame):
         try:
             df = self.bot.get_chart_data(self.current_pair)
             
-            # Clear chart area but keep the header (label + dropdown)
+            # Limpiar área de gráfica manteniendo el encabezado (label + dropdown)
             for widget in self.chart_frame.winfo_children():
                 if widget != self.header_frame:
                     widget.destroy()
@@ -250,7 +250,7 @@ class DashboardView(ctk.CTkFrame):
                 }
             )
 
-            # Create the figure
+            # Crear figura y ejes
             fig, ax = mpf.plot(
                 df,
                 type="candle",
@@ -264,19 +264,19 @@ class DashboardView(ctk.CTkFrame):
                 xrotation=0,
                 show_nontrading=False
             )
-            # Ensure labels are fully visible with comfortable margins
+            # Garantizar etiquetas visibles con márgenes cómodos
             try:
                 fig.subplots_adjust(left=0.08, right=0.98, bottom=0.18, top=0.96, hspace=0.10)
             except Exception:
                 pass
             
             # Ajustes finos de ejes de precio y volumen
-            # ax[0] is price, ax[2] is volume
+            # ax[0]: precio, ax[2]: volumen
             ax[0].set_ylabel("Price (USDT)", color=COLOR_TEXT_PRIMARY, labelpad=12, fontsize=11)
             ax[0].yaxis.set_label_position("right")
             ax[0].yaxis.tick_right()
             
-            # Dynamic decimals for price axis for better readability
+            # Decimales dinámicos en eje de precio para mejor legibilidad
             try:
                 last_price = float(df['close'].iloc[-1])
             except Exception:
@@ -285,7 +285,7 @@ class DashboardView(ctk.CTkFrame):
             ax[0].yaxis.set_major_formatter(mticker.StrMethodFormatter(f'{{x:,.{decimals}f}}'))
             ax[0].yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune='both'))
             
-            # Volume axis
+            # Eje de volumen
             if len(ax) > 2:
                 ax[2].set_ylabel("Vol", color=COLOR_TEXT_PRIMARY, fontsize=9)
                 ax[2].yaxis.set_major_formatter(mticker.StrMethodFormatter('{x:,.0f}'))
@@ -301,7 +301,7 @@ class DashboardView(ctk.CTkFrame):
                 a.spines['bottom'].set_color(COLOR_BORDER)
                 a.grid(alpha=0.12, linestyle=':')
 
-            # Embed in Tkinter
+            # Integrar figura en Tkinter
             self.canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
             self.canvas.draw()
             canvas_widget = self.canvas.get_tk_widget()
@@ -310,7 +310,7 @@ class DashboardView(ctk.CTkFrame):
             
         except Exception as e:
             self.log(f"❌ Chart Error: {e}")
-            # Show error in chart area
+            # Mostrar error en área de gráfica
             err = ctk.CTkLabel(self.chart_frame, text=f"Chart Error: {str(e)}", text_color=COLOR_ACCENT_SELL)
             err.pack(expand=True)
     
@@ -337,7 +337,7 @@ class DashboardView(ctk.CTkFrame):
     
     def reset_stats(self):
         """Reset statistics with confirmation"""
-        # Simple confirmation via dialog
+        # Confirmación simple mediante diálogo
         dialog = ctk.CTkInputDialog(
             text="Type 'RESET' to confirm resetting statistics:",
             title="Reset Statistics"
@@ -360,7 +360,7 @@ class DashboardView(ctk.CTkFrame):
         except Exception as e:
             pass
             
-        # Schedule next update (faster: 2 seconds)
+        # Programar próximo update (rápido: 2 segundos)
         self.after(2000, self.update_ticker)
 
     def recompute_stats(self):

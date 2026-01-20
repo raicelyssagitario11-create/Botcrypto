@@ -13,7 +13,7 @@ class HistoryView(ctk.CTkFrame):
         self._auto_refresh_id = None
         self._auto_refresh_ms = 15000  # 15s
         
-        # Header Area
+        # Área de encabezado
         header_frame = ctk.CTkFrame(self, fg_color="transparent")
         header_frame.pack(fill="x", padx=30, pady=(30, 20))
         
@@ -209,11 +209,11 @@ class HistoryView(ctk.CTkFrame):
     def export_history(self):
         """Exporta historial a CSV usando cuadro de diálogo."""
         try:
-            # Default filename
+            # Nombre de archivo por defecto
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             default_name = f"trading_history_{timestamp}.csv"
             
-            # Show Save As Dialog
+            # Diálogo Guardar como...
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".csv",
                 filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
@@ -222,12 +222,12 @@ class HistoryView(ctk.CTkFrame):
             )
             
             if not file_path:
-                return # User cancelled
+                return # Usuario canceló
 
-            # Export via DataManager
+            # Exportar vía DataManager
             self.bot.data_manager.export_to_csv(file_path)
             
-            # Visual Feedback
+            # Feedback visual de exportación
             feedback_lbl = ctk.CTkLabel(
                 self, 
                 text=f"✅ Exported successfully!", 

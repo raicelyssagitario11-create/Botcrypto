@@ -14,7 +14,7 @@ class SignalNotification(ctk.CTkToplevel):
         self.sl = sl
         self.tp = tp
         
-        # Window config
+        # Configuración de ventana
         self.title("Trading Signal")
         self.geometry("400x250")
         self.resizable(False, False)
@@ -22,13 +22,13 @@ class SignalNotification(ctk.CTkToplevel):
         # Siempre encima de otras ventanas
         self.attributes('-topmost', True)
         
-        # Position in center of parent
+        # Posicionar centrado respecto al padre
         self.update_idletasks()
         x = parent.winfo_x() + (parent.winfo_width() // 2) - 200
         y = parent.winfo_y() + (parent.winfo_height() // 2) - 125
         self.geometry(f"+{x}+{y}")
         
-        # Colors based on signal type
+        # Colores según tipo de señal
         if signal_type == "BUY":
             bg_color = COLOR_ACCENT_BUY
             icon = "📈"
@@ -36,10 +36,10 @@ class SignalNotification(ctk.CTkToplevel):
             bg_color = COLOR_ACCENT_SELL
             icon = "📉"
         
-        # Main frame
+        # Frame principal
         self.configure(fg_color=COLOR_BG_SECONDARY)
         
-        # Header
+        # Encabezado
         header_frame = ctk.CTkFrame(self, fg_color=bg_color, corner_radius=0)
         header_frame.pack(fill="x", padx=0, pady=0)
         
@@ -51,11 +51,11 @@ class SignalNotification(ctk.CTkToplevel):
         )
         header_label.pack(pady=15)
         
-        # Content
+        # Contenido
         content_frame = ctk.CTkFrame(self, fg_color=COLOR_BG_SECONDARY)
         content_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Pair
+        # Par
         pair_label = ctk.CTkLabel(
             content_frame,
             text=f"Pair: {pair}",
@@ -64,7 +64,7 @@ class SignalNotification(ctk.CTkToplevel):
         )
         pair_label.pack(pady=5)
         
-        # Price
+        # Precio
         price_label = ctk.CTkLabel(
             content_frame,
             text=f"Entry: ${price:.2f}",
@@ -82,7 +82,7 @@ class SignalNotification(ctk.CTkToplevel):
         )
         sl_tp_label.pack(pady=2)
         
-        # Close button
+        # Botón cerrar
         close_btn = ctk.CTkButton(
             content_frame,
             text="OK",
@@ -96,7 +96,7 @@ class SignalNotification(ctk.CTkToplevel):
         # Autocierre a los 8 segundos
         self.after(8000, self.destroy)
         
-        # Play sound in background thread
+        # Reproducir sonido en hilo de fondo
         threading.Thread(target=self._play_sound, daemon=True).start()
     
     def _play_sound(self):
@@ -105,4 +105,4 @@ class SignalNotification(ctk.CTkToplevel):
             # Windows beep: frequency, duration
             winsound.Beep(1000, 300)  # 1000Hz for 300ms
         except:
-            pass  # Ignore if sound fails
+            pass  # Ignorar si el sonido falla

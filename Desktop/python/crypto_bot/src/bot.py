@@ -10,7 +10,7 @@ from .data_manager import DataManager
 
 # Indicadores simples usados para generar señales.
 
-# Indicators
+# Indicadores
 def ema(series, period):
     return pd.Series(series).ewm(span=period, adjust=False).mean()
 
@@ -27,21 +27,21 @@ class TradingBot:
     # Bot principal: gestiona datos de mercado, genera señales
     # y sincroniza estadísticas con la UI de forma segura.
     def __init__(self, log_callback=None, stats_callback=None, notification_callback=None):
-        # Add request timeout to avoid blocking UI if Binance is slow
+        # Añade timeout de requests para no bloquear la UI si Binance está lento
         self.client = Client(API_KEY, API_SECRET, requests_params={"timeout": 10})
         self.running = False
-        self.log_callback = log_callback      # Function to call with new log messages
-        self.stats_callback = stats_callback  # Function to call with updated stats
-        self.notification_callback = notification_callback  # Function to call with signal notifications
+        self.log_callback = log_callback      # Función para enviar nuevos mensajes al log
+        self.stats_callback = stats_callback  # Función para actualizar estadísticas en la UI
+        self.notification_callback = notification_callback  # Función para notificar señales (popup)
         
-        # Initialize data manager
+        # Inicializa gestor de datos
         self.data_manager = DataManager()  # Persistencia en JSON (estado y historial)
         
-        # Migrate old CSV data if exists
+        # Migra CSV antiguo si existe
         self.history_file = "signals_history.csv"
         self.data_manager.migrate_from_csv(self.history_file)  # Importa histórico legado si existe
         
-        # Load saved state
+        # Carga estado guardado
         saved_state = self.data_manager.load_bot_state()
         self.capital_initial = saved_state["capital_initial"]
         self.capital_actual = saved_state["capital_actual"]
@@ -52,14 +52,14 @@ class TradingBot:
         self.loss_count = saved_state["loss_count"]
         self.last_signal = saved_state["last_signal"]
 
-        # Recompute stats from history to make PNL and win rate functional
+        # Recalcula PNL y win rate desde historial
         self.recompute_stats()
 
     def log(self, message):
         # Enviar logs a UI y consola como fallback
         if self.log_callback:
             self.log_callback(message)
-        print(message) # Fallback
+        print(message) # Respaldo a consola
 
     def update_stats(self):
         # Persistir estado y notificar a la UI (stats_callback)
@@ -116,7 +116,7 @@ class TradingBot:
         if signal_type == "BUY":
             stop_loss = price * (1 - risk_percent)
             take_profit = price * (1 + reward_percent)
-        else: # SELL
+        else: # VENTA
             stop_loss = price * (1 + risk_percent)
             take_profit = price * (1 - reward_percent)
         return stop_loss, take_profit

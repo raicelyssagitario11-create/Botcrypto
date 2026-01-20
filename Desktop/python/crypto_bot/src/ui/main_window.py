@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from .styles import *
 from .dashboard import DashboardView
-# from .history import HistoryView # Implement later
+# from .history import HistoryView # Implementar más tarde (comentado)
 
 class MainWindow(ctk.CTk):
     # Ventana principal: sidebar de control y área de contenido.
@@ -13,7 +13,7 @@ class MainWindow(ctk.CTk):
         self.geometry("1400x900")
         apply_theme()
         
-        # Grid Layout
+        # Layout de grilla
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         
@@ -22,7 +22,7 @@ class MainWindow(ctk.CTk):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_rowconfigure(4, weight=1)
 
-        # Header / Logo
+        # Encabezado / Logo
         self.logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.logo_frame.grid(row=0, column=0, padx=20, pady=(30, 20))
         
@@ -45,12 +45,12 @@ class MainWindow(ctk.CTk):
         )
         self.status_pill.pack(pady=5)
         
-        # Navigation
+        # Navegación
         self.btn_dashboard = self._create_nav_btn("📊 Dashboard", self.show_dashboard, 1)
         self.btn_history = self._create_nav_btn("📜 History", self.show_history, 2)
         # self.btn_settings = self._create_nav_btn("⚙️ Settings", self.show_settings, 3)
 
-        # Control Section
+        # Sección de control
         control_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         control_frame.grid(row=5, column=0, padx=20, pady=20, sticky="ew")
         

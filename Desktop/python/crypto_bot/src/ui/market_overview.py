@@ -50,7 +50,7 @@ class MarketOverview(ctk.CTkFrame):
         )
         self.rows_frame.pack(fill="both", expand=True, padx=0, pady=(0, 2))
         self.rows_frame.pack_propagate(False)
-        # Use grid inside scrollable frame to avoid pack/layout conflicts
+        # Usar grid dentro del scrollable frame para evitar conflictos de layout
         try:
             self.rows_frame.grid_columnconfigure(0, weight=1)
         except Exception:
@@ -78,7 +78,7 @@ class MarketOverview(ctk.CTkFrame):
         row_bg = "#11151b" if idx % 2 == 0 else "#181A20"
         row_frame = ctk.CTkFrame(self.rows_frame, fg_color=row_bg, cursor="hand2", corner_radius=0, border_width=0, border_color=COLOR_BORDER)
         row_frame.configure(height=46)
-        # Place rows using grid to ensure they render inside CTkScrollableFrame
+        # Colocar filas con grid para asegurar que rendericen dentro del CTkScrollableFrame
         row_frame.grid(row=idx, column=0, sticky="ew", padx=0, pady=0)
         try:
             self.rows_frame.grid_rowconfigure(idx, weight=0)
@@ -93,17 +93,17 @@ class MarketOverview(ctk.CTkFrame):
         def on_click(e): self.on_pair_select(pair)
         row_frame.bind("<Button-1>", on_click)
         
-        # Pair
+        # Par
         p_lbl = ctk.CTkLabel(row_frame, text=pair, font=(FONT_FAMILY, 12, "bold"), width=100, anchor="w", text_color=COLOR_TEXT_PRIMARY)
         p_lbl.grid(row=0, column=0, padx=15, pady=10, sticky="w")
         p_lbl.bind("<Button-1>", on_click)
         
-        # Price
+        # Precio
         pr_lbl = ctk.CTkLabel(row_frame, text="Loading...", font=(FONT_FAMILY, 12, "bold"), width=120, anchor="w", text_color=COLOR_TEXT_PRIMARY)
         pr_lbl.grid(row=0, column=1, padx=15, pady=10, sticky="w")
         pr_lbl.bind("<Button-1>", on_click)
         
-        # Change
+        # Cambio 24h
         ch_lbl = ctk.CTkLabel(row_frame, text="--", font=(FONT_FAMILY, 11), width=100, anchor="w", text_color=COLOR_TEXT_PRIMARY)
         ch_lbl.grid(row=0, column=2, padx=15, pady=10, sticky="w")
         ch_lbl.bind("<Button-1>", on_click)
@@ -113,7 +113,7 @@ class MarketOverview(ctk.CTkFrame):
         rs_lbl.grid(row=0, column=3, padx=15, pady=10, sticky="w")
         rs_lbl.bind("<Button-1>", on_click)
         
-        # Signal Badge
+        # Insignia de señal
         sig_frame = ctk.CTkFrame(row_frame, fg_color="#2B3139", corner_radius=4, width=80, height=24)
         sig_frame.grid(row=0, column=4, padx=15, pady=10, sticky="w")
         sig_frame.grid_propagate(False)
@@ -139,7 +139,7 @@ class MarketOverview(ctk.CTkFrame):
         from ..config import PAIRS
         pairs = PAIRS or list(self.pair_rows.keys())
 
-        # Ensure rows exist if they were not created for any reason
+        # Crear filas si no existieran por alguna razón
         if not self.pair_rows:
             for idx, pair in enumerate(pairs):
                 self._create_pair_row(idx, pair)
@@ -156,7 +156,7 @@ class MarketOverview(ctk.CTkFrame):
             self.after(0, lambda: self._apply_market_data(results))
 
         threading.Thread(target=worker, daemon=True).start()
-        # Schedule next update (faster: 5 seconds)
+        # Programar siguiente actualización (rápido: 5 segundos)
         self.after(5000, self.update_market_data)
 
     def _apply_market_data(self, results):

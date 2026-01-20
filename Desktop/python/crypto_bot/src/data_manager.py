@@ -8,16 +8,16 @@ class DataManager:
     """Gestiona persistencia local (JSON) del bot: estado y historial."""
     
     def __init__(self, data_dir: str = "data"):
-        # Use absolute path relative to this file's location (src/data_manager.py)
-        # to ensure it always finds the data folder inside the project
+        # Usa ruta absoluta relativa a este archivo (src/data_manager.py)
+        # para asegurar que siempre se ubique la carpeta de datos del proyecto
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raíz del proyecto
         self.data_dir = os.path.join(base_dir, data_dir)
         self.data_file = os.path.join(self.data_dir, "bot_data.json")
         
-        # Ensure data directory exists
+        # Asegurar existencia de la carpeta de datos
         os.makedirs(self.data_dir, exist_ok=True)
         
-        # Initialize data structure
+        # Inicializa estructura de datos en memoria
         self.data = self._load_data()
     
     def _load_data(self) -> Dict:
@@ -113,7 +113,7 @@ class DataManager:
         """Lee historial y normaliza campos faltantes (result/mode)."""
         history = self.data["trading_history"].copy()
 
-        # Backfill missing fields (result/mode) for older entries
+        # Relleno de campos faltantes (result/mode) para entradas antiguas
         changed = False
         for entry in history:
             if not entry.get("result"):
@@ -125,7 +125,7 @@ class DataManager:
                 changed = True
 
         if changed:
-            # Persist normalized history
+            # Persistir historial normalizado
             self.data["trading_history"] = history
             self._save_data()
 
@@ -168,7 +168,7 @@ class DataManager:
         try:
             with open(output_file, 'w', newline='', encoding='utf-8') as f:
                 if not self.data["trading_history"]:
-                    # Empty history
+                    # Historial vacío
                     f.write("No trading history available\n")
                     return output_file
                 
@@ -239,7 +239,7 @@ class DataManager:
                 if not line:
                     continue
                 
-                # Parse old format: "timestamp SIGNAL pair @ price (SL: x, TP: y) | Cap: z"
+                # Parseo del formato antiguo: "timestamp SIGNAL pair @ price (SL: x, TP: y) | Cap: z"
                 parts = line.split("|")
                 if len(parts) < 2:
                     continue
@@ -247,11 +247,11 @@ class DataManager:
                 signal_part = parts[0].strip()
                 cap_part = parts[1].strip()
                 
-                # Extract timestamp
+                # Extraer timestamp
                 time_match = re.search(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})', signal_part)
                 timestamp = time_match.group(1) if time_match else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-                # Extract signal type
+                # Extraer tipo de señal
                 if "BUY" in signal_part:
                     signal_type = "BUY"
                 elif "SELL" in signal_part:
@@ -259,11 +259,11 @@ class DataManager:
                 else:
                     continue
                 
-                # Extract pair
+                # Extraer par
                 pair_match = re.search(r'(BTC|ETH|BNB)USDT', signal_part)
                 pair = pair_match.group(0) if pair_match else "UNKNOWN"
                 
-                # Extract price, SL, TP
+                # Extraer precio, SL y TP
                 price_match = re.search(r'@ ([\d.]+)', signal_part)
                 sl_match = re.search(r'SL: ([\d.]+)', signal_part)
                 tp_match = re.search(r'TP: ([\d.]+)', signal_part)
@@ -272,11 +272,11 @@ class DataManager:
                 sl = float(sl_match.group(1)) if sl_match else 0.0
                 tp = float(tp_match.group(1)) if tp_match else 0.0
                 
-                # Extract capital
+                # Extraer capital
                 cap_match = re.search(r'Cap: ([\d.]+)', cap_part)
                 capital_after = float(cap_match.group(1)) if cap_match else 0.0
                 
-                # Create signal entry
+                # Crear entrada de señal
                 signal_data = {
                     "timestamp": timestamp,
                     "signal_type": signal_type,
@@ -292,7 +292,7 @@ class DataManager:
                 self.data["trading_history"].append(signal_data)
             
             self._save_data()
-            print(f"Successfully migrated {len(self.data['trading_history'])} signals from CSV")
+            print(f"Migración exitosa de {len(self.data['trading_history'])} señales desde CSV")
             
         except Exception as e:
             print(f"Error migrating from CSV: {e}")
