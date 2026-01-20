@@ -5,7 +5,7 @@ import pandas as pd
 import threading
 import ctypes
 from binance.client import Client
-from .config import API_KEY, API_SECRET, PAIRS, INTERVAL, LIMIT, ENTRY_SIZE
+from .config import API_KEY, API_SECRET, PAIRS, INTERVAL, LIMIT, ENTRY_SIZE, TRADING_MODE
 from .data_manager import DataManager
 
 # Indicators
@@ -23,7 +23,8 @@ def rsi(series, period=14):
 
 class TradingBot:
     def __init__(self, log_callback=None, stats_callback=None, notification_callback=None):
-        self.client = Client(API_KEY, API_SECRET)
+        # Add request timeout to avoid blocking UI if Binance is slow
+        self.client = Client(API_KEY, API_SECRET, requests_params={"timeout": 10})
         self.running = False
         self.log_callback = log_callback      # Function to call with new log messages
         self.stats_callback = stats_callback  # Function to call with updated stats
@@ -46,6 +47,9 @@ class TradingBot:
         self.win_count = saved_state["win_count"]
         self.loss_count = saved_state["loss_count"]
         self.last_signal = saved_state["last_signal"]
+
+        # Recompute stats from history to make PNL and win rate functional
+        self.recompute_stats()
 
     def log(self, message):
         if self.log_callback:
@@ -79,6 +83,26 @@ class TradingBot:
                 "last_signal": self.last_signal
             }
             self.stats_callback(stats)
+
+    def recompute_stats(self):
+        """Recompute totals and counters from persisted trading history."""
+        try:
+            summary = self.data_manager.get_history_summary()
+            self.profit_loss_total = summary["pnl_total"]
+            self.buy_count = summary["buy_count"]
+            self.sell_count = summary["sell_count"]
+            self.win_count = summary["win_count"]
+            self.loss_count = summary["loss_count"]
+            # Capital actual = initial + total pnl (approx)
+            self.capital_actual = self.capital_initial + self.profit_loss_total
+            # Last signal from history if available
+            if summary.get("last_signal"):
+                self.last_signal = summary["last_signal"]
+            # Push stats to UI
+            self.update_stats()
+            self.log("🔄 Estadísticas recalculadas desde el historial")
+        except Exception as e:
+            self.log(f"⚠️ No se pudieron recomputar estadísticas: {e}")
 
     def calculate_levels(self, price, signal_type):
         risk_percent = 0.02
@@ -144,6 +168,8 @@ class TradingBot:
                 'take_profit': take_profit,
                 'capital_after': self.capital_actual,
                 'pnl': gain,
+                'mode': TRADING_MODE,
+                'result': 'WIN',
                 'status': 'completed',
                 # For notification (legacy format)
                 'type': 'BUY',
@@ -170,6 +196,8 @@ class TradingBot:
                 'take_profit': take_profit,
                 'capital_after': self.capital_actual,
                 'pnl': -loss,
+                'mode': TRADING_MODE,
+                'result': 'LOSS',
                 'status': 'completed',
                 # For notification (legacy format)
                 'type': 'SELL',

@@ -2,9 +2,12 @@ import os
 from binance.client import Client
 
 # === Binance Config ===
-# TODO: Load these from environment variables or a secure file in production
-API_KEY = "TU_API_KEY"
-API_SECRET = "TU_API_SECRET"
+# Load keys from environment variables (recommended)
+API_KEY = os.getenv("BINANCE_API_KEY", "")
+API_SECRET = os.getenv("BINANCE_API_SECRET", "")
+
+# Trading mode: "SIM" (no real orders) or "REAL" (requires API trading perms)
+TRADING_MODE = os.getenv("TRADING_MODE", "SIM").upper()
 
 # Trading Config
 PAIRS = ["BNBUSDT", "BTCUSDT", "ETHUSDT"]

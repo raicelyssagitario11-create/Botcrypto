@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from .styles import *
+from ..config import PAIRS
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.ticker as mticker
 import mplfinance as mpf
@@ -13,20 +14,19 @@ class DashboardView(ctk.CTkFrame):
         
         # === Grid ===
         self.grid_columnconfigure((0, 1, 2, 3), weight=1)
-        self.grid_rowconfigure(1, weight=1)  # Market overview
+        self.grid_rowconfigure(1, weight=1)  # Market overview + log row
         self.grid_rowconfigure(2, weight=2)  # Chart
-        self.grid_rowconfigure(3, weight=1)  # Log
         
         # === Stats Cards ===
         stats_container = ctk.CTkFrame(self, fg_color="transparent")
-        stats_container.grid(row=0, column=0, columnspan=4, sticky="ew", padx=20, pady=(20, 10))
+        stats_container.grid(row=0, column=0, columnspan=4, sticky="ew", padx=20, pady=(16, 8))
         stats_container.grid_columnconfigure((0, 1, 2, 3), weight=1)
         
         # Capital card
         self.card_capital = self._create_card(stats_container, 0, "TOTAL CAPITAL", "25.00 USDT", "💰", self.edit_capital)
         
-        # PNL card
-        self.card_pnl = self._create_card(stats_container, 1, "TOTAL PNL", "+0.00 USDT", "📈")
+        # PNL card (with manual recompute button)
+        self.card_pnl = self._create_card(stats_container, 1, "TOTAL PNL", "+0.00 USDT", "📈", self.recompute_stats)
         
         # Win rate card
         self.card_winrate = self._create_card(stats_container, 2, "WIN RATE", "0% (0/0)", "🎯", self.reset_stats)
@@ -34,33 +34,19 @@ class DashboardView(ctk.CTkFrame):
         # Price ticker card
         self.card_price = self._create_card(stats_container, 3, "LIVE PRICE", "--.-- USDT", "⚡", None, COLOR_ACCENT_BUY)
 
-        # === Market Overview Panel ===
+        # === Market Overview Panel (left) ===
         from .market_overview import MarketOverview
         self.market_overview = MarketOverview(self, self.bot, self.switch_pair)
-        self.market_overview.grid(row=1, column=0, columnspan=4, padx=20, pady=10, sticky="nsew")
+        self.market_overview.grid(row=1, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")
 
-        # === Chart Section ===
-        self.chart_frame = ctk.CTkFrame(self, fg_color=COLOR_BG_SECONDARY, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
-        self.chart_frame.grid(row=2, column=0, columnspan=4, padx=20, pady=10, sticky="nsew")
-        
-        header_frame = ctk.CTkFrame(self.chart_frame, fg_color="transparent")
-        header_frame.pack(fill="x", padx=15, pady=10)
-        
-        self.chart_label = ctk.CTkLabel(header_frame, text=f"MARKET OVERVIEW ({self.current_pair})", font=(FONT_FAMILY, 14, "bold"), text_color=COLOR_TEXT_SECONDARY)
-        self.chart_label.pack(side="left")
-        
-        # Placeholder for Chart
-        self.canvas = None
-        
-        # === Log Section ===
+        # === Activity Log (right) ===
         self.log_frame = ctk.CTkFrame(self, fg_color=COLOR_BG_SECONDARY, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
-        self.log_frame.grid(row=3, column=0, columnspan=4, padx=20, pady=(0, 20), sticky="nsew")
-        
+        self.log_frame.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
+
         log_header = ctk.CTkFrame(self.log_frame, fg_color="transparent")
-        log_header.pack(fill="x", padx=15, pady=(10, 5))
-        
+        log_header.pack(fill="x", padx=12, pady=(8, 4))
         ctk.CTkLabel(log_header, text="ACTIVITY LOG", font=(FONT_FAMILY, 12, "bold"), text_color=COLOR_TEXT_MUTED).pack(side="left")
-        
+
         self.log_box = ctk.CTkTextbox(
             self.log_frame, 
             font=("Consolas", 12), 
@@ -69,8 +55,38 @@ class DashboardView(ctk.CTkFrame):
             border_width=0,
             corner_radius=6
         )
-        self.log_box.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        self.log_box.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
+        # === Chart Section (full width) ===
+        self.chart_frame = ctk.CTkFrame(self, fg_color=COLOR_BG_SECONDARY, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
+        self.chart_frame.grid(row=2, column=0, columnspan=4, padx=20, pady=(4, 16), sticky="nsew")
+        
+        header_frame = ctk.CTkFrame(self.chart_frame, fg_color="transparent")
+        header_frame.pack(fill="x", padx=15, pady=10)
+        # Keep a reference so we don't destroy this frame during chart refresh
+        self.header_frame = header_frame
+        
+        self.chart_label = ctk.CTkLabel(header_frame, text=f"MARKET OVERVIEW ({self.current_pair})", font=(FONT_FAMILY, 14, "bold"), text_color=COLOR_TEXT_SECONDARY)
+        self.chart_label.pack(side="left")
+
+        # Pair selector dropdown
+        self.pair_var = ctk.StringVar(value=self.current_pair)
+        self.pair_selector = ctk.CTkOptionMenu(
+            header_frame,
+            values=PAIRS,
+            variable=self.pair_var,
+            command=self.switch_pair,
+            fg_color=COLOR_BG_PRIMARY,
+            button_color=COLOR_BG_SECONDARY,
+            button_hover_color="#2B3139",
+            text_color=COLOR_TEXT_PRIMARY,
+            font=(FONT_FAMILY, 12)
+        )
+        self.pair_selector.pack(side="right")
+        
+        # Placeholder for Chart
+        self.canvas = None
+        
         # === Hooks ===
         self.bot.log_callback = self.update_log_safe
         self.bot.stats_callback = self.update_stats_safe
@@ -88,7 +104,7 @@ class DashboardView(ctk.CTkFrame):
         
         # Header with Icon and Title
         header = ctk.CTkFrame(frame, fg_color="transparent")
-        header.pack(fill="x", padx=15, pady=(15, 0))
+        header.pack(fill="x", padx=12, pady=(10, 0))
         
         icon_lbl = ctk.CTkLabel(header, text=icon, font=(FONT_FAMILY, 16))
         icon_lbl.pack(side="left", padx=(0, 5))
@@ -110,8 +126,8 @@ class DashboardView(ctk.CTkFrame):
             btn.pack(side="right")
         
         # Value
-        val_lbl = ctk.CTkLabel(frame, text=value, font=(FONT_FAMILY, 24, "bold"), text_color=value_color)
-        val_lbl.pack(padx=15, pady=(5, 15), anchor="w")
+        val_lbl = ctk.CTkLabel(frame, text=value, font=(FONT_FAMILY, 22, "bold"), text_color=value_color)
+        val_lbl.pack(padx=12, pady=(4, 12), anchor="w")
         
         return val_lbl
 
@@ -148,6 +164,12 @@ class DashboardView(ctk.CTkFrame):
         self.current_pair = pair
         self.chart_label.configure(text=f"MARKET OVERVIEW ({pair})")
         self.update_chart()
+        # Refresh market overview immediately to reflect the new focus
+        try:
+            self.market_overview.update_market_data()
+            self.market_overview.set_active_pair(pair)
+        except Exception:
+            pass
         self.log(f"📊 Switched to {pair}")
 
     def show_notification_safe(self, signal_data):
@@ -181,9 +203,9 @@ class DashboardView(ctk.CTkFrame):
         try:
             df = self.bot.get_chart_data(self.current_pair)
             
-            # Clear frame
+            # Clear chart area but keep the header (label + dropdown)
             for widget in self.chart_frame.winfo_children():
-                if widget != self.chart_label:
+                if widget != self.header_frame:
                     widget.destroy()
 
             if df is None or df.empty: 
@@ -229,35 +251,47 @@ class DashboardView(ctk.CTkFrame):
                 title="",
                 returnfig=True,
                 figsize=(10, 5),
-                tight_layout=True,
+                tight_layout=False,
                 datetime_format='%H:%M',
                 xrotation=0,
                 show_nontrading=False
             )
+            # Ensure labels are fully visible with comfortable margins
+            try:
+                fig.subplots_adjust(left=0.08, right=0.98, bottom=0.18, top=0.96, hspace=0.10)
+            except Exception:
+                pass
             
             # Fine-tune the price and volume axes
             # ax[0] is price, ax[2] is volume
-            ax[0].set_ylabel("Price (USDT)", color=COLOR_TEXT_MUTED, labelpad=12, fontsize=9)
+            ax[0].set_ylabel("Price (USDT)", color=COLOR_TEXT_PRIMARY, labelpad=12, fontsize=11)
             ax[0].yaxis.set_label_position("right")
             ax[0].yaxis.tick_right()
             
-            # Fix Y-axis to show full numbers (no scientific notation, no offset)
-            ax[0].yaxis.set_major_formatter(mticker.StrMethodFormatter('{x:,.0f}'))
+            # Dynamic decimals for price axis for better readability
+            try:
+                last_price = float(df['close'].iloc[-1])
+            except Exception:
+                last_price = 0.0
+            decimals = 0 if last_price >= 1000 else (2 if last_price >= 1 else 4)
+            ax[0].yaxis.set_major_formatter(mticker.StrMethodFormatter(f'{{x:,.{decimals}f}}'))
+            ax[0].yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune='both'))
             
             # Volume axis
             if len(ax) > 2:
-                ax[2].set_ylabel("Vol", color=COLOR_TEXT_MUTED, fontsize=8)
-                ax[2].yaxis.set_major_formatter(mticker.FormatStrFormatter('%d'))
+                ax[2].set_ylabel("Vol", color=COLOR_TEXT_PRIMARY, fontsize=9)
+                ax[2].yaxis.set_major_formatter(mticker.StrMethodFormatter('{x:,.0f}'))
+                ax[2].yaxis.set_major_locator(mticker.MaxNLocator(nbins=4, prune='both'))
             
             # Customize all axes
             for a in ax:
-                a.tick_params(axis='x', colors=COLOR_TEXT_MUTED, labelsize=8, pad=5)
-                a.tick_params(axis='y', colors=COLOR_TEXT_MUTED, labelsize=8, pad=5)
+                a.tick_params(axis='x', colors=COLOR_TEXT_PRIMARY, labelsize=11, pad=8)
+                a.tick_params(axis='y', colors=COLOR_TEXT_PRIMARY, labelsize=11, pad=8)
                 a.spines['top'].set_visible(False)
                 a.spines['right'].set_visible(False)
                 a.spines['left'].set_visible(False)
                 a.spines['bottom'].set_color(COLOR_BORDER)
-                a.grid(alpha=0.15, linestyle=':')
+                a.grid(alpha=0.12, linestyle=':')
 
             # Embed in Tkinter
             self.canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
@@ -320,6 +354,13 @@ class DashboardView(ctk.CTkFrame):
             
         # Schedule next update (faster: 2 seconds)
         self.after(2000, self.update_ticker)
+
+    def recompute_stats(self):
+        """Trigger bot stats recompute from dashboard button"""
+        try:
+            self.bot.recompute_stats()
+        except Exception as e:
+            self.log(f"❌ Error al recalcular estadísticas: {e}")
 
 
 

@@ -111,10 +111,30 @@ class DataManager:
     
     def load_trading_history(self) -> List[Dict]:
         """Load trading history"""
-        return self.data["trading_history"].copy()
+        history = self.data["trading_history"].copy()
+
+        # Backfill missing fields (result/mode) for older entries
+        changed = False
+        for entry in history:
+            if not entry.get("result"):
+                pnl_val = entry.get("pnl", 0.0)
+                entry["result"] = "WIN" if pnl_val > 0 else ("LOSS" if pnl_val < 0 else "FLAT")
+                changed = True
+            if not entry.get("mode"):
+                entry["mode"] = "SIM"
+                changed = True
+
+        if changed:
+            # Persist normalized history
+            self.data["trading_history"] = history
+            self._save_data()
+
+        return history
     
     def save_signal(self, signal_data: Dict):
         """Save a new trading signal to history"""
+        pnl_val = signal_data.get("pnl", 0.0)
+        inferred_result = "WIN" if pnl_val > 0 else ("LOSS" if pnl_val < 0 else "FLAT")
         signal_entry = {
             "timestamp": signal_data.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
             "signal_type": signal_data["signal_type"],
@@ -123,7 +143,9 @@ class DataManager:
             "stop_loss": signal_data["stop_loss"],
             "take_profit": signal_data["take_profit"],
             "capital_after": signal_data.get("capital_after", 0.0),
-            "pnl": signal_data.get("pnl", 0.0),
+            "pnl": pnl_val,
+            "mode": signal_data.get("mode", "SIM"),
+            "result": signal_data.get("result", inferred_result),
             "status": signal_data.get("status", "completed")
         }
         
@@ -152,7 +174,7 @@ class DataManager:
                 
                 writer = csv.DictWriter(f, fieldnames=[
                     "timestamp", "signal_type", "pair", "price", 
-                    "stop_loss", "take_profit", "capital_after", "pnl", "status"
+                    "stop_loss", "take_profit", "capital_after", "pnl", "result", "mode", "status"
                 ])
                 writer.writeheader()
                 writer.writerows(self.data["trading_history"])
@@ -160,6 +182,45 @@ class DataManager:
             return output_file
         except Exception as e:
             raise Exception(f"Error exporting to CSV: {e}")
+
+    # === Aggregations ===
+    def get_history_summary(self) -> Dict:
+        """Compute totals from trading_history for UI stats.
+        Returns dict with keys: pnl_total, buy_count, sell_count, win_count, loss_count, last_signal.
+        """
+        history = self.data.get("trading_history", [])
+        pnl_total = 0.0
+        buy_count = 0
+        sell_count = 0
+        win_count = 0
+        loss_count = 0
+        last_signal = "Ninguna"
+
+        for entry in history:
+            try:
+                pnl_total += float(entry.get("pnl", 0.0))
+            except (TypeError, ValueError):
+                pass
+            st = str(entry.get("signal_type", ""))
+            if st == "BUY":
+                buy_count += 1
+            elif st == "SELL":
+                sell_count += 1
+            res = str(entry.get("result", "")).upper()
+            if res == "WIN":
+                win_count += 1
+            elif res == "LOSS":
+                loss_count += 1
+            last_signal = f"{st} {entry.get('pair', '')}" or last_signal
+
+        return {
+            "pnl_total": pnl_total,
+            "buy_count": buy_count,
+            "sell_count": sell_count,
+            "win_count": win_count,
+            "loss_count": loss_count,
+            "last_signal": last_signal,
+        }
     
     # === Migration from old CSV format ===
     
