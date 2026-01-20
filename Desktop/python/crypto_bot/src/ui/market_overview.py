@@ -4,7 +4,7 @@ import pandas as pd
 import threading
 
 class MarketOverview(ctk.CTkFrame):
-    """Multi-pair market overview panel"""
+    """Panel de overview multi-par: precio, cambio 24h, RSI y señal."""
     def __init__(self, master, bot, on_pair_select):
         super().__init__(master, fg_color=COLOR_BG_SECONDARY, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
         self.bot = bot
@@ -40,7 +40,7 @@ class MarketOverview(ctk.CTkFrame):
             )
             lbl.grid(row=0, column=i, padx=15, pady=10, sticky="w")
         
-        # Rows (scrollable with fixed visible height to avoid being collapsed by the chart)
+        # Filas (scrollable) con altura fija para buena visibilidad
         self.rows_frame = ctk.CTkScrollableFrame(
             self,
             fg_color=COLOR_BG_SECONDARY,
@@ -145,6 +145,7 @@ class MarketOverview(ctk.CTkFrame):
                 self._create_pair_row(idx, pair)
 
         def worker():
+            # Fetch en segundo plano para no bloquear la UI
             results = []
             for pair in pairs:
                 try:
@@ -159,6 +160,7 @@ class MarketOverview(ctk.CTkFrame):
         self.after(5000, self.update_market_data)
 
     def _apply_market_data(self, results):
+        # Calcula métricas y actualiza etiquetas por cada par
         from ..bot import rsi, ema
         for pair, df, err in results:
             if err:

@@ -5,12 +5,12 @@ from typing import Dict, List, Optional
 import csv
 
 class DataManager:
-    """Manages local data persistence for the trading bot using JSON files"""
+    """Gestiona persistencia local (JSON) del bot: estado y historial."""
     
     def __init__(self, data_dir: str = "data"):
         # Use absolute path relative to this file's location (src/data_manager.py)
         # to ensure it always finds the data folder inside the project
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raíz del proyecto
         self.data_dir = os.path.join(base_dir, data_dir)
         self.data_file = os.path.join(self.data_dir, "bot_data.json")
         
@@ -21,7 +21,7 @@ class DataManager:
         self.data = self._load_data()
     
     def _load_data(self) -> Dict:
-        """Load data from JSON file or create default structure"""
+        """Carga JSON o crea estructura por defecto si no existe."""
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, 'r', encoding='utf-8') as f:
@@ -33,7 +33,7 @@ class DataManager:
             return self._create_default_data()
     
     def _create_default_data(self) -> Dict:
-        """Create default data structure"""
+        """Estructura inicial: estado del bot + historial vacío."""
         return {
             "bot_state": {
                 "capital_initial": 25.0,
@@ -62,16 +62,16 @@ class DataManager:
     # === Bot State Management ===
     
     def load_bot_state(self) -> Dict:
-        """Load bot state (capital, statistics)"""
+        """Lee estado del bot (capital y contadores)."""
         return self.data["bot_state"].copy()
     
     def save_bot_state(self, state: Dict):
-        """Save bot state"""
+        """Guarda estado del bot."""
         self.data["bot_state"].update(state)
         self._save_data()
     
     def update_capital(self, initial: float, actual: float, pnl: float):
-        """Update capital values"""
+        """Actualiza capital inicial/actual y PNL total."""
         self.data["bot_state"]["capital_initial"] = initial
         self.data["bot_state"]["capital_actual"] = actual
         self.data["bot_state"]["profit_loss_total"] = pnl
@@ -79,7 +79,7 @@ class DataManager:
     
     def update_statistics(self, buy_count: int, sell_count: int, 
                          win_count: int, loss_count: int, last_signal: str):
-        """Update trading statistics"""
+        """Actualiza contadores y última señal."""
         self.data["bot_state"]["buy_count"] = buy_count
         self.data["bot_state"]["sell_count"] = sell_count
         self.data["bot_state"]["win_count"] = win_count
@@ -88,12 +88,12 @@ class DataManager:
         self._save_data()
     
     def set_running_state(self, is_running: bool):
-        """Save whether the bot is running or not"""
+        """Marca si el bot está corriendo (para auto-start)."""
         self.data["bot_state"]["is_running"] = is_running
         self._save_data()
     
     def reset_statistics(self):
-        """Reset statistics while keeping history"""
+        """Resetea estadísticas manteniendo historial (capital se conserva)."""
         current_capital = self.data["bot_state"]["capital_actual"]
         self.data["bot_state"].update({
             "capital_initial": current_capital,
@@ -110,7 +110,7 @@ class DataManager:
     # === Trading History Management ===
     
     def load_trading_history(self) -> List[Dict]:
-        """Load trading history"""
+        """Lee historial y normaliza campos faltantes (result/mode)."""
         history = self.data["trading_history"].copy()
 
         # Backfill missing fields (result/mode) for older entries
@@ -132,7 +132,7 @@ class DataManager:
         return history
     
     def save_signal(self, signal_data: Dict):
-        """Save a new trading signal to history"""
+        """Guarda una nueva señal en el historial (JSON)."""
         pnl_val = signal_data.get("pnl", 0.0)
         inferred_result = "WIN" if pnl_val > 0 else ("LOSS" if pnl_val < 0 else "FLAT")
         signal_entry = {
@@ -160,7 +160,7 @@ class DataManager:
     # === Export Functions ===
     
     def export_to_csv(self, output_file: Optional[str] = None) -> str:
-        """Export trading history to CSV file"""
+        """Exporta historial a CSV (para análisis externo)."""
         if output_file is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_file = f"trading_history_export_{timestamp}.csv"
@@ -185,8 +185,8 @@ class DataManager:
 
     # === Aggregations ===
     def get_history_summary(self) -> Dict:
-        """Compute totals from trading_history for UI stats.
-        Returns dict with keys: pnl_total, buy_count, sell_count, win_count, loss_count, last_signal.
+        """Agrega PNL y contadores para las tarjetas de la UI.
+        Devuelve: pnl_total, buy_count, sell_count, win_count, loss_count, last_signal.
         """
         history = self.data.get("trading_history", [])
         pnl_total = 0.0
@@ -225,7 +225,7 @@ class DataManager:
     # === Migration from old CSV format ===
     
     def migrate_from_csv(self, csv_file: str):
-        """Migrate data from old CSV format to new JSON format"""
+        """Migra CSV legado al formato JSON moderno (mejor trazabilidad)."""
         if not os.path.exists(csv_file):
             return
         

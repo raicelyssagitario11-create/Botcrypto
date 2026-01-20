@@ -4,6 +4,7 @@ from .dashboard import DashboardView
 # from .history import HistoryView # Implement later
 
 class MainWindow(ctk.CTk):
+    # Ventana principal: sidebar de control y área de contenido.
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
@@ -86,6 +87,7 @@ class MainWindow(ctk.CTk):
         self.content_area.grid_columnconfigure(0, weight=1)
         
         # Views
+        # Dashboard (principal) y History (tabla de señales)
         self.dashboard_view = DashboardView(self.content_area, self.bot)
         from .history import HistoryView
         self.history_view = HistoryView(self.content_area, self.bot)
@@ -130,11 +132,13 @@ class MainWindow(ctk.CTk):
         active_btn.configure(fg_color="#2B3139", text_color=COLOR_ACCENT_MAIN)
 
     def start_bot_wrapper(self):
+        # Inicia el bot y actualiza indicador de estado.
         self.bot.start()
         self.status_pill.configure(text="● RUNNING", text_color=COLOR_ACCENT_BUY, fg_color="#142620")
         self.dashboard_view.log("▶ Command: Start Bot")
 
     def stop_bot_wrapper(self):
+        # Detiene el bot y actualiza indicador de estado.
         self.bot.stop()
         self.status_pill.configure(text="OFFLINE", text_color=COLOR_TEXT_SECONDARY, fg_color="#363C44")
         self.dashboard_view.log("⏹ Command: Stop Bot")

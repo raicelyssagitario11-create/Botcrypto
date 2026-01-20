@@ -8,6 +8,8 @@ from binance.client import Client
 from .config import API_KEY, API_SECRET, PAIRS, INTERVAL, LIMIT, ENTRY_SIZE, TRADING_MODE
 from .data_manager import DataManager
 
+# Indicadores simples usados para generar señales.
+
 # Indicators
 def ema(series, period):
     return pd.Series(series).ewm(span=period, adjust=False).mean()
@@ -22,6 +24,8 @@ def rsi(series, period=14):
     return 100 - (100 / (1 + rs))
 
 class TradingBot:
+    # Bot principal: gestiona datos de mercado, genera señales
+    # y sincroniza estadísticas con la UI de forma segura.
     def __init__(self, log_callback=None, stats_callback=None, notification_callback=None):
         # Add request timeout to avoid blocking UI if Binance is slow
         self.client = Client(API_KEY, API_SECRET, requests_params={"timeout": 10})
@@ -31,11 +35,11 @@ class TradingBot:
         self.notification_callback = notification_callback  # Function to call with signal notifications
         
         # Initialize data manager
-        self.data_manager = DataManager()
+        self.data_manager = DataManager()  # Persistencia en JSON (estado y historial)
         
         # Migrate old CSV data if exists
         self.history_file = "signals_history.csv"
-        self.data_manager.migrate_from_csv(self.history_file)
+        self.data_manager.migrate_from_csv(self.history_file)  # Importa histórico legado si existe
         
         # Load saved state
         saved_state = self.data_manager.load_bot_state()
@@ -52,12 +56,13 @@ class TradingBot:
         self.recompute_stats()
 
     def log(self, message):
+        # Enviar logs a UI y consola como fallback
         if self.log_callback:
             self.log_callback(message)
         print(message) # Fallback
 
     def update_stats(self):
-        # Save state to data manager
+        # Persistir estado y notificar a la UI (stats_callback)
         self.data_manager.update_capital(
             self.capital_initial,
             self.capital_actual,
@@ -85,7 +90,7 @@ class TradingBot:
             self.stats_callback(stats)
 
     def recompute_stats(self):
-        """Recompute totals and counters from persisted trading history."""
+        """Recalcula PNL y contadores desde el historial persistido."""
         try:
             summary = self.data_manager.get_history_summary()
             self.profit_loss_total = summary["pnl_total"]
@@ -105,6 +110,7 @@ class TradingBot:
             self.log(f"⚠️ No se pudieron recomputar estadísticas: {e}")
 
     def calculate_levels(self, price, signal_type):
+        # TP/SL aproximados para simulación (2% riesgo, 6% recompensa)
         risk_percent = 0.02
         reward_percent = 0.06
         if signal_type == "BUY":
@@ -116,6 +122,7 @@ class TradingBot:
         return stop_loss, take_profit
 
     def check_signal(self, symbol):
+        # Obtiene velas y evalúa cruce de EMAs + RSI para BUY/SELL
         try:
             klines = self.client.get_klines(symbol=symbol, interval=INTERVAL, limit=LIMIT)
         except Exception as e:
@@ -213,6 +220,7 @@ class TradingBot:
             pass
 
         if signal_msg:
+            # Guardar señal, actualizar estadísticas y notificar a la UI
             self.log(signal_msg)
             self.save_to_history(signal_msg, signal_data)
             self.update_stats()
@@ -222,6 +230,7 @@ class TradingBot:
                 self.notification_callback(signal_data)
 
     def save_to_history(self, message, signal_data=None):
+        # Persistencia dual: CSV legado (opcional) + JSON moderno
         # Legacy CSV save (optional, for backup)
         try:
              with open(self.history_file, "a", encoding="utf-8") as f:
@@ -241,12 +250,13 @@ class TradingBot:
             self.check_signal(pair)
 
     def _run_loop(self):
+        # Bucle del scheduler (cada 30s). Corre en hilo aparte.
         while self.running:
             schedule.run_pending()
             time.sleep(1)
 
     def _prevent_sleep(self):
-        """Prevent Windows from entering sleep mode while the bot is running"""
+        """Evita suspensión de Windows mientras el bot está activo (solo Win)."""
         try:
             # ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED
             # This tells Windows the system is performing a background task and should not sleep
@@ -298,7 +308,7 @@ class TradingBot:
         return df
 
     def get_current_price(self, symbol):
-        """Get the current ticker price for a symbol"""
+        """Precio actual vía ticker (endpoint público)."""
         try:
             ticker = self.client.get_symbol_ticker(symbol=symbol)
             return float(ticker['price'])
@@ -315,7 +325,7 @@ class TradingBot:
             return None
     
     def update_initial_capital(self, new_capital: float):
-        """Update the initial capital (callable from UI)"""
+        """Actualiza capital inicial (desde la UI) y resetea PNL."""
         self.capital_initial = new_capital
         self.capital_actual = new_capital
         self.profit_loss_total = 0.0
@@ -323,7 +333,7 @@ class TradingBot:
         self.log(f"💰 Capital inicial actualizado a {new_capital:.2f} USDT")
     
     def reset_statistics(self):
-        """Reset all statistics while keeping history"""
+        """Resetea estadísticas y conserva historial."""
         self.data_manager.reset_statistics()
         
         # Reload state

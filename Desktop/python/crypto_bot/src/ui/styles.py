@@ -1,6 +1,6 @@
 import customtkinter as ctk
 
-# === Color Palette (Binance Premium) ===
+# === Paleta de colores (estilo Binance) ===
 COLOR_BG_PRIMARY = "#0B0E11"      # Ultra Dark Background
 COLOR_BG_SECONDARY = "#1E2329"    # Cards / Sidebar
 COLOR_BG_CARD = "#181A20"         # Specific Card BG
@@ -21,16 +21,17 @@ COLOR_ACCENT_MAIN_HOVER = "#D9B221"
 COLOR_BORDER = "#2B3139"          # Subtle Borders
 COLOR_DIVIDER = "#2B3139"
 
-# === Styling Constants ===
+# === Constantes de estilo ===
 CARD_CORNER_RADIUS = 12
 BUTTON_CORNER_RADIUS = 8
 INPUT_CORNER_RADIUS = 6
 
-# === Fonts ===
-FONT_FAMILY = "Segoe UI"  # Modern Windows font
+# === Fuentes ===
+ FONT_FAMILY = "Segoe UI"  # Fuente moderna de Windows
 FONT_WEIGHT_BOLD = "bold"
 FONT_WEIGHT_MEDIUM = "normal" # Default weight
 
 def apply_theme():
+    # Tema oscuro consistente para toda la app
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")

@@ -4,7 +4,7 @@ import winsound
 import threading
 
 class SignalNotification(ctk.CTkToplevel):
-    """Popup notification for trading signals"""
+    """Popup de notificación para señales (con sonido y autocierre)."""
     def __init__(self, parent, signal_type, pair, price, sl, tp):
         super().__init__(parent)
         
@@ -19,7 +19,7 @@ class SignalNotification(ctk.CTkToplevel):
         self.geometry("400x250")
         self.resizable(False, False)
         
-        # Always on top
+        # Siempre encima de otras ventanas
         self.attributes('-topmost', True)
         
         # Position in center of parent
@@ -93,14 +93,14 @@ class SignalNotification(ctk.CTkToplevel):
         )
         close_btn.pack(pady=15)
         
-        # Auto-close after 8 seconds
+        # Autocierre a los 8 segundos
         self.after(8000, self.destroy)
         
         # Play sound in background thread
         threading.Thread(target=self._play_sound, daemon=True).start()
     
     def _play_sound(self):
-        """Play system beep (Windows)"""
+        """Reproduce beep del sistema (Windows)."""
         try:
             # Windows beep: frequency, duration
             winsound.Beep(1000, 300)  # 1000Hz for 300ms

@@ -7,6 +7,7 @@ import mplfinance as mpf
 import pandas as pd
 
 class DashboardView(ctk.CTkFrame):
+    # Vista principal: estadísticas, overview y gráfica.
     def __init__(self, master, bot):
         super().__init__(master, fg_color=COLOR_BG_PRIMARY)
         self.bot = bot
@@ -18,6 +19,7 @@ class DashboardView(ctk.CTkFrame):
         self.grid_rowconfigure(2, weight=2)  # Chart
         
         # === Stats Cards ===
+        # Tarjetas superiores: capital, PNL total, win rate y ticker.
         stats_container = ctk.CTkFrame(self, fg_color="transparent")
         stats_container.grid(row=0, column=0, columnspan=4, sticky="ew", padx=20, pady=(16, 8))
         stats_container.grid_columnconfigure((0, 1, 2, 3), weight=1)
@@ -35,11 +37,13 @@ class DashboardView(ctk.CTkFrame):
         self.card_price = self._create_card(stats_container, 3, "LIVE PRICE", "--.-- USDT", "⚡", None, COLOR_ACCENT_BUY)
 
         # === Market Overview Panel (left) ===
+        # Resumen de pares con precio/cambio/RSI y señal.
         from .market_overview import MarketOverview
         self.market_overview = MarketOverview(self, self.bot, self.switch_pair)
         self.market_overview.grid(row=1, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")
 
         # === Activity Log (right) ===
+        # Consola de eventos y señales.
         self.log_frame = ctk.CTkFrame(self, fg_color=COLOR_BG_SECONDARY, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
         self.log_frame.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
 
@@ -58,6 +62,7 @@ class DashboardView(ctk.CTkFrame):
         self.log_box.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
         # === Chart Section (full width) ===
+        # Gráfica de velas embebida con mplfinance.
         self.chart_frame = ctk.CTkFrame(self, fg_color=COLOR_BG_SECONDARY, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
         self.chart_frame.grid(row=2, column=0, columnspan=4, padx=20, pady=(4, 16), sticky="nsew")
         
@@ -88,6 +93,7 @@ class DashboardView(ctk.CTkFrame):
         self.canvas = None
         
         # === Hooks ===
+        # Conexiones thread-safe hacia la UI.
         self.bot.log_callback = self.update_log_safe
         self.bot.stats_callback = self.update_stats_safe
         self.bot.notification_callback = self.show_notification_safe
@@ -135,6 +141,7 @@ class DashboardView(ctk.CTkFrame):
         self.update_log_safe(message)
 
     def update_log_safe(self, message):
+        # Asegura actualización en hilo principal de Tk.
         # Calls need to be thread safe for Tkinter
         self.after(0, lambda: self._log_impl(message))
 
@@ -143,6 +150,7 @@ class DashboardView(ctk.CTkFrame):
         self.log_box.see("end")
 
     def update_stats_safe(self, stats):
+        # Actualiza tarjetas de forma segura desde callbacks del bot.
         self.after(0, lambda: self._stats_impl(stats))
 
     def _stats_impl(self, stats):
@@ -160,7 +168,7 @@ class DashboardView(ctk.CTkFrame):
         self.card_winrate.configure(text=f"{rate:.1f}% ({wins}/{total})")
 
     def switch_pair(self, pair):
-        """Switch the main chart to a different pair"""
+        """Cambia el par principal y refresca overview/charteo."""
         self.current_pair = pair
         self.chart_label.configure(text=f"MARKET OVERVIEW ({pair})")
         self.update_chart()
@@ -214,7 +222,7 @@ class DashboardView(ctk.CTkFrame):
                 return
 
             # === Premium Chart Style ===
-            # We use a custom style for better readability
+            # Estilo oscuro y legible, coherente con el resto de la UI.
             mc = mpf.make_marketcolors(
                 up=COLOR_ACCENT_BUY, 
                 down=COLOR_ACCENT_SELL,
@@ -262,7 +270,7 @@ class DashboardView(ctk.CTkFrame):
             except Exception:
                 pass
             
-            # Fine-tune the price and volume axes
+            # Ajustes finos de ejes de precio y volumen
             # ax[0] is price, ax[2] is volume
             ax[0].set_ylabel("Price (USDT)", color=COLOR_TEXT_PRIMARY, labelpad=12, fontsize=11)
             ax[0].yaxis.set_label_position("right")
@@ -283,7 +291,7 @@ class DashboardView(ctk.CTkFrame):
                 ax[2].yaxis.set_major_formatter(mticker.StrMethodFormatter('{x:,.0f}'))
                 ax[2].yaxis.set_major_locator(mticker.MaxNLocator(nbins=4, prune='both'))
             
-            # Customize all axes
+            # Personalización general de ejes y rejilla
             for a in ax:
                 a.tick_params(axis='x', colors=COLOR_TEXT_PRIMARY, labelsize=11, pad=8)
                 a.tick_params(axis='y', colors=COLOR_TEXT_PRIMARY, labelsize=11, pad=8)

@@ -6,7 +6,7 @@ from tkinter import filedialog
 from .styles import *
 
 class HistoryView(ctk.CTkFrame):
-    """Professional history table for past signals"""
+    """Tabla profesional del historial de señales con scroll y export."""
     def __init__(self, master, bot):
         super().__init__(master, fg_color=COLOR_BG_PRIMARY)
         self.bot = bot
@@ -48,7 +48,7 @@ class HistoryView(ctk.CTkFrame):
         )
         export_btn.pack(side="right", padx=10)
         
-        # Table container (grid to host canvas + scrollbars)
+        # Contenedor de tabla (Canvas + scrollbars para H/V)
         table_container = ctk.CTkFrame(self, fg_color=COLOR_BG_SECONDARY, corner_radius=CARD_CORNER_RADIUS, border_width=1, border_color=COLOR_BORDER)
         table_container.pack(fill="both", expand=True, padx=30, pady=(0, 30))
         try:
@@ -57,11 +57,11 @@ class HistoryView(ctk.CTkFrame):
         except Exception:
             pass
 
-        # Canvas for horizontal + vertical scrolling
+        # Canvas para scroll horizontal y vertical
         self.table_canvas = tk.Canvas(table_container, bg=COLOR_BG_SECONDARY, highlightthickness=0, bd=0)
         self.table_canvas.grid(row=1, column=0, sticky="nsew", padx=2, pady=(0, 2))
         
-        # Scrollbars (dark theme)
+        # Scrollbars (tema oscuro, integradas con CTk)
         self.h_scroll = ctk.CTkScrollbar(
             table_container,
             orientation="horizontal",
@@ -83,7 +83,7 @@ class HistoryView(ctk.CTkFrame):
         self.v_scroll.grid(row=1, column=1, sticky="ns", pady=(0, 2))
         self.table_canvas.configure(xscrollcommand=self.h_scroll.set, yscrollcommand=self.v_scroll.set)
 
-        # Inner frame inside canvas
+        # Frame interno dentro del canvas (contenido desplazable)
         self.content_frame = ctk.CTkFrame(self.table_canvas, fg_color="transparent")
         self.canvas_window = self.table_canvas.create_window((0, 0), window=self.content_frame, anchor="nw")
         try:
@@ -93,7 +93,7 @@ class HistoryView(ctk.CTkFrame):
         except Exception:
             pass
 
-        # Headers inside content frame (scroll together)
+        # Cabeceras dentro del contenido (se desplazan junto con filas)
         headers_frame = ctk.CTkFrame(self.content_frame, fg_color="#181A20", corner_radius=0)
         headers_frame.grid(row=0, column=0, columnspan=9, sticky="ew")
         headers = ["Time", "Pair", "Signal", "Price", "SL", "TP", "Result", "Mode", "Status"]
@@ -102,7 +102,7 @@ class HistoryView(ctk.CTkFrame):
             lbl = ctk.CTkLabel(headers_frame, text=header.upper(), font=(FONT_FAMILY, 11, "bold"), text_color=COLOR_TEXT_MUTED, width=width, anchor="w")
             lbl.grid(row=0, column=i, padx=15, pady=12, sticky="w")
 
-        # Bind configure to update scrollregion
+        # Mantener scrollregion sincronizada cuando cambia el tamaño
         def _update_scrollregion(event=None):
             try:
                 self.table_canvas.configure(scrollregion=self.table_canvas.bbox("all"))
@@ -119,7 +119,7 @@ class HistoryView(ctk.CTkFrame):
         self.start_auto_refresh()
     
     def load_history(self):
-        """Load trading history from JSON"""
+        """Carga historial desde JSON y renderiza filas en la tabla."""
         for widget in self.content_frame.winfo_children():
             if isinstance(widget, ctk.CTkFrame) and widget.cget("fg_color") == "#181A20":
                 # keep headers_frame
@@ -143,7 +143,7 @@ class HistoryView(ctk.CTkFrame):
             for idx, signal in enumerate(history[:50]):
                 self._create_history_row(idx, signal)
 
-            # Update canvas scrollregion after creating rows
+            # Actualizar scrollregion del canvas tras crear filas
             try:
                 self.content_frame.update_idletasks()
                 self.table_canvas.configure(scrollregion=self.table_canvas.bbox("all"))
@@ -207,7 +207,7 @@ class HistoryView(ctk.CTkFrame):
             pass
     
     def export_history(self):
-        """Export history to CSV using a file dialog"""
+        """Exporta historial a CSV usando cuadro de diálogo."""
         try:
             # Default filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -246,12 +246,12 @@ class HistoryView(ctk.CTkFrame):
             self.bot.log(f"❌ Export failed: {e}")
 
     def start_auto_refresh(self):
-        """Begin periodic auto-refresh of the history view."""
+        """Activa auto-refresh periódico de la vista de historial."""
         if self._auto_refresh_id is None:
             self._schedule_next_refresh()
 
     def stop_auto_refresh(self):
-        """Stop periodic auto-refresh."""
+        """Detiene el auto-refresh periódico."""
         if self._auto_refresh_id is not None:
             try:
                 self.after_cancel(self._auto_refresh_id)
